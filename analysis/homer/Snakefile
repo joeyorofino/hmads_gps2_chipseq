@@ -1,0 +1,46 @@
+rule all:
+	input:
+		anno = expand('samples/{day}_GPS2{rep}/{day}_gps2{rep}_anno_peaks_filtered.txt', day=['d0', 'd14'], rep=['E', 'U'])
+
+rule make_tag_dir:
+	input:
+		combined_bam = 'samples/{day}_{IP}_trimmed.sorted.bam'
+	output:
+		tag_dir = directory('samples/{day}_{IP}/')
+	shell:
+		'makeTagDirectory {output.tag_dir} {input.combined_bam}'		
+
+rule findpeaks_gps2_input:
+	input:
+		tag_dir = 'samples/{day}_gps2{rep}/',
+		inp_dir = 'samples/{day}_input/'
+	output:
+		peaks = 'samples/{day}_GPS2{rep}/peaks.txt'
+
+	shell:
+		'findPeaks {input.tag_dir} -style factor -i {input.inp_dir} -o {output.peaks}'
+
+rule convert_bed_GPS2:
+	input:
+		peaks = 'samples/{day}_GPS2{rep}/peaks.txt'
+	output:
+		bed = 'samples/{day}_GPS2{rep}/peaks.bed'
+	shell:
+		'pos2bed.pl {input.peaks} > {output.bed}'
+
+rule filter_bed_GPS2:
+	input:
+		bed = 'samples/{day}_GPS2{rep}/peaks.bed',
+		blacklist = 'samples/hg38-blacklist.v2.bed'
+	output:
+		filtered = 'samples/{day}_GPS2{rep}/peaks_filtered.bed'
+	shell:
+		'bedtools intersect -v -a {input.bed} -b {input.blacklist} > {output.filtered}'
+
+rule annotatePeaks_GPS2:
+	input:
+		filtered = 'samples/{day}_GPS2{rep}/peaks_filtered.bed'
+	output:
+		anno = 'samples/{day}_GPS2{rep}/{day}_gps2{rep}_anno_peaks_filtered.txt'
+	shell:
+		'annotatePeaks.pl {input.filtered} hg38 > {output.anno}'

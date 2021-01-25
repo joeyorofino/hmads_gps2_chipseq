@@ -1,0 +1,28 @@
+import pandas
+
+rule all:
+	input:
+		diet_list = expand('samples/{experiment}_hgnc_log2fc.rnk', experiment = diet_conditions),
+		time_list = expand('samples/{experiment}_hgnc_log2fc.rnk', experiment = time_conditions),
+		treatment_list = expand('samples/{experiment}_hgnc_log2fc.rnk', experiment = treatment_conditions)
+
+rule generate_gene_list:
+	input:
+		gene_mat = 'samples/{experiment}.deseq2.de.dropped.tsv' 
+	output:
+		gene_list = 'samples/{experiment}.id_list.tsv'
+	run:
+		ref = pandas.read_csv(input.gene_mat, sep='\t', index_col = 0)
+		ref['index'] = ref.index
+		split_mat = ref['index'].str.split('.', n = 1, expand = True)
+		ref['id_split'] = split_mat[0]
+		ref['id_split'].to_csv(output.gene_list, index=False)
+
+rule convert_gene_list:
+	input:
+		gene_list = 'samples/{experiment}.id_list.tsv'
+	output:
+		id_mat = 'samples/{experiment}.mus-id_to_hum-id.tsv',
+		symbol_mat = 'samples/{experiment}.hum-id_to_hgnc.tsv' 
+	shell:
+		'Rscript run_biomart_convert.R {input.gene_list}'

@@ -1,0 +1,33 @@
+times = ['d0U', 'd0E', 'd14U', 'd14E']
+regions = ['promoter', 'intronic', 'intergenic']
+
+rule all:
+	input:
+		motifs = expand('samples/{time}_{region}_motifs/', time = times, region = regions)
+
+rule motif_find_promoter:
+	input:
+		promoter_list = 'samples/{time}_promoters.bed'
+	output:
+		motifs = directory('samples/{time}_promoter_motifs/')
+	threads: 8
+	shell:
+		'findMotifsGenome.pl {input.promoter_list} hg38 {output.motifs} -p {threads} -size 200 -mask'
+
+rule motif_find_intronic:
+	input:
+		intronic_list = 'samples/{time}_introns.bed'
+	output:
+		motifs = directory('samples/{time}_intronic_motifs/')
+	threads: 8
+	shell:
+		'findMotifsGenome.pl {input.intronic_list} hg38 {output.motifs} -p {threads} -size 200 -mask'
+
+rule motif_find_intergenic:
+	input:
+		intergenic_list = 'samples/{time}_intergenic.bed'
+	output:
+		motifs = directory('samples/{time}_intergenic_motifs/')
+	threads: 8
+	shell:
+		'findMotifsGenome.pl {input.intergenic_list} hg38 {output.motifs} -p {threads} -size 200 -mask'

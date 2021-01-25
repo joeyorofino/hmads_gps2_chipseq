@@ -1,0 +1,20 @@
+rule all:
+	input:
+		pca = 'samples/PCA_readcounts.pdf'
+
+rule multibamsummary:
+	input:
+		bam = expand('samples/{day}_{IP}_trimmed.sorted.bam', day=['d0', 'd14'], IP = ['gps2E', 'gps2U', 'input'])
+	output:
+		npz = 'samples/multibamsummary.npz'
+	threads: 8
+	shell:
+		'multiBamSummary bins --bamfiles {input.bam} -p {threads} -o {output.npz}'
+
+rule plotPCA:
+	input:
+		npz = 'samples/multibamsummary.npz'
+	output:
+		pdf = 'samples/PCA_readcounts.pdf'
+	shell:
+		'plotPCA --transpose -in {input.npz} -o {output.pdf}'

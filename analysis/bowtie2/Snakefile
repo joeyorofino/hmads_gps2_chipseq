@@ -1,0 +1,60 @@
+days = ['d0', 'd14']
+IPS = ['gps2E', 'gps2U', 'input']
+
+rule all:
+	input:
+		'samples/multiqc_report.html'
+
+rule bowtie2:
+	input:
+		fastq_trim = 'samples/{day}_{ip}_trimmed.fastq'
+	output:
+		sam_file = 'samples/{day}_{ip}_trimmed.sam'
+	params:
+		index = 'references/hs33'
+	threads: 8
+	shell:
+		'bowtie2 -p {threads} -x {params.index} {input.fastq_trim} > {output.sam_file}' 
+
+rule convert_bam:
+	input:
+		sam_file = 'samples/{day}_{ip}_trimmed.sam'
+	output:
+		bam_file = 'samples/{day}_{ip}_trimmed.bam'
+	shell:
+		'samtools view -bS {input.sam_file} > {output.bam_file}'
+
+rule bam_stats:
+	input:
+		bam_file = 'samples/{day}_{ip}_trimmed.bam'
+	output:
+		stats = 'samples/{day}_{ip}_trimmed.bamstats.txt'
+	shell:
+		'bam_stat.py -i {input.bam_file} > {output.stats}'
+
+rule sort_bam:
+	input:
+		bam_filtered = 'samples/{day}_{ip}_trimmed.bam',
+		bam_stats = 'samples/{day}_{ip}_trimmed.bamstats.txt'
+	output:
+		sorted_filtered_bam = 'samples/{day}_{ip}_trimmed.sorted.bam'
+	shell:
+		'samtools sort {input.bam_filtered} -o {output.sorted_filtered_bam}'
+	
+rule index_bam:
+	input:
+		sorted_filtered_bam = 'samples/{day}_{ip}_trimmed.sorted.bam'
+	output:
+		sorted_filtered_index = 'samples/{day}_{ip}_trimmed.sorted.bai'
+	shell:
+		'samtools index -b {input.sorted_filtered_bam} {output.sorted_filtered_index}'	
+rule multi_qc:
+	input:
+		expand('samples/{day}_{ip}_trimmed.sorted.bai', day = days, ip = IPS)
+	output:
+		multiqc_report = 'samples/multiqc_report.html'
+	shell:
+		'export LC_ALL=en_US.utf-8 && '
+		'export LANG=$LC_ALL && '
+		'multiqc -f /projectnb/perissilab/hmads_gps2_chipseq/ '
+		'--outdir /projectnb/perissilab/hmads_gps2_chipseq '
